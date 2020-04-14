@@ -67,7 +67,7 @@ class Player():
         """
         
         
-        if self.position < 0:
+        if self.position < 2:
             #currently big or small blind
             #pay the blinds, and call any bet
             self.nChip = self.nChip + self.position - chipsToCall
