@@ -10,12 +10,13 @@ while not end:
     0. Create/Shuffle the deck
     1. check if enough active player, else BREAK
     2. call startGame() on each players in the list, from 0 to END, pass hands and position to each player(agent)
-    3. while no winner:
+    3. while no winner or before MAX_ITERATION:
         (if street == PreFlop, start from position 2, else start from position 0)
         3a. call player_i.action(), pass through latest updated thisGameActions{}
         3b. update returned tuple into thisGameActions{}
         3c. update table.pot
-        3d. if all players checks/called
+        3d. if all players checks/called, move to next street, or call find_winner()
+        3e. if player is out and inactive, remove it from the playersList
         
 
 @author: terry
@@ -27,16 +28,14 @@ class table():
     
     def __init__(self):
         self.buttomPosition = 0
-        self.PlayersList = [] #can it contains both parent class and child class?
+        self.PlayersList = [] 
         self.pot = 0
         self.bb = 2
         self.sb = 1
-        self._tempPosition = 0
         self.MAX_ITERATION = 50
 
     def addPlayer(self, newPlayer : Player):
-        self.PlayerList.append((newPlayer, self._tempPosition))
-        self._tempPosition = self._tempPosition + 1
+        self.PlayersList.append(newPlayer)
         
     def getPot(self):
         return self.pot
@@ -87,39 +86,85 @@ class table():
         if self.getNPlayer() < 3:
             print('not enough players')
             return 0
-        
-        thisGameAction = {  'Street' : 'PreFlop',
-                            'Actions' : {
-                                'PreFLop' : [] ,
-                                'Flop' : [] ,
-                                'Turn' : [] ,
-                                'River' : []
-                                },
-                            'CommunityCards' : {
-                                'Flop' : [] ,
-                                'Turn' : [] ,
-                                'River' : []                                
-                                },
-                            'Pot' : self.pot}
-        
-        UTG_table_position = -1
-        BB_table_position = 0
-        BTN__table_position = 2
-        i = 0
-        
+
+        i = 0 #game id
+        #create a deck for following game
+        theDeck = Deck(1)        
+ 
+        #Start the 'tournament'
         while True:
-            
-            print("Game ", " ", i)
             
             if ((i == self.MAX_ITERATION) or (self.getNPlayer_active() < 3)):
                 print('All games end')
                 return 0
+        
+            #prepare a new game :
+            thisGameAction = {  'Street' : 'PreFlop',
+                    'Actions' : {
+                        'PreFLop' : [] ,
+                        'Flop' : [] ,
+                        'Turn' : [] ,
+                        'River' : []
+                        },
+                    'CommunityCards' : {
+                        'Flop' : [] ,
+                        'Turn' : [] ,
+                        'River' : []                                
+                        },
+                    'Pot' : self.pot,
+                    'NPlayers' : len(self.PlayersList)}
             
+            print("Game ", " ", i)
+            
+            
+            # Start a new Game, if active, dealt card, give a position, update position
+            
+            # Shuffle the deck
+            theDeck.shuffle(3)
+            
+            #all players are assumed to be all active
+            #dealt card to players, and 'tell them their position in this game'
+            for pos, plyr in enumerate(self.PlayersList):
+                hand = []
+                hand.append(theDeck.dealt())
+                hand.append(theDeck.dealt())
+                plyr.startGame(hand, pos)
+                
+            #Game Start:
+            #while loop to ask around, move to next street until every one agree on the bet
+            for street in ['PreFLop', 'Flop', 'Turn', 'River']:
+                
+                if street == 'PreFlop':
+                    startPosition = 2
+                else:
+                    startPosition = 0
+                    
+                """
+                TODO: 
+                1. PreFlop, force player 0 and player 1 pay SB and BB
+                2. Track current max bet, and ask for diff between past bet and max bet
+                3. Loop all players, until all players
+                    either: a. Fold and isInGame = False
+                            b. past bet == max bet
+                            c. ALL IN, past bet < max bet and Player's nChip = 0
+                4. end this street, move to next, if street == Riever, call findWinner()
+                """
+                pass
+            
+            #remove inactive player before next game
+            temp = []
             for plyr in self.PlayersList:
-                plyr[0].
-                plyr[1]
+                if plyr.isActive() == True:
+                    temp.append(plyr)
+            self.PlayersList = temp
+            
+            #change the PlayersList order, move all to right, last to front
+            #should we 'move' the seats before remove inactive player?
+            temp_player = self.PlayersList.pop()
+            self.PlayersList.insert(0, temp_player)
             
             
+            #update game id
             i = i + 1
             
         
