@@ -21,8 +21,9 @@ from cardClass import Card, PokerCard
 
 class Player():
     
-    def __init__(self, nChip : int):
+    def __init__(self, nChip : int, name : str):
         
+        self.name = name
         self.nChip = nChip
         
         self.hand = [] # do we need make a copy of cards from desk class
@@ -30,6 +31,8 @@ class Player():
         self.active = True
         self.inGame = False
     
+    def name(self):
+        return self.name
 
     def isActive(self):
 
@@ -39,7 +42,7 @@ class Player():
         
         return self.inGame         
         
-    def startGame(self, yourHand : list, yourPosition : int):
+    def startGame(self, yourHand : list, yourPosition : int, cost2Start = 0):
         """
         Called once every game
         """
@@ -47,6 +50,17 @@ class Player():
         self.inGame = True
         self.hand = yourHand
         self.position = yourPosition
+        
+        if yourPosition <= 1:
+            if self.nChip < cost2Start:
+                chip = self.nChip
+                self.nChip = 0
+                return chip
+            else:
+                return cost2Start
+        else:
+            return 0
+            
         
     def endGame(self, payoff : int):
         """

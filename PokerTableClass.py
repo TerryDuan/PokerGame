@@ -51,6 +51,14 @@ class table():
         
         return n
     
+    def getNPlayer_inGame(self):
+        n = 0
+        for plyr in self.PlayersList:
+            if plyr[0].isInGame():
+                n = n + 1
+        
+        return n
+    
     def setBlinds(self, bb : int):
         self.bb = bb
         self.sb = int(bb/2)
@@ -58,8 +66,68 @@ class table():
     def setMaxGames(self, maxGames : int):
         self.MAX_ITERATION = maxGames
     
-    def actionValidation(self):
+    def _prepareGame(self, theDeck):
+        #all players are assumed to be all active
+        #dealt card to players, and 'tell them their position in this game'
+        for pos, plyr in enumerate(self.PlayersList):
+            hand = []
+            hand.append(theDeck.dealt())
+            hand.append(theDeck.dealt())
+            if pos == 0:
+                blinds = plyr.startGame(hand, pos, self.sb)
+            elif pos == 1:
+                blinds = plyr.startGame(hand, pos, self.bb)
+            else:
+                blinds = plyr.startGame(hand, pos, 0)
+            self.pot = self.pot + blinds
+    
+    
+    def _runCurrentStreet(self, thisGameActions, startPosition : int, street : str):
+        if thisGameActions['Street'] == 'PreFlop':
+            maxBet = self.bb
+            currentOpen = 1 #for PreFlop, BB is the first Opened
+            while True:
+                if startPosition == currentOpen:
+                    return 0
+                elif self.PlayersList[startPosition].isInGame():
+                    action, bet = self.PlayersList[startPosition].action(maxBet, thisGameActions)
+                    #TODO: add action validation 
+                    #if actionValidation(thisGameActions, action) == False: force Player to Fold
+                    #if he raised or bet, he become the Opened player
+                    if (action == 'Raise' or action == 'Bet') and bet > maxBet:
+                        currentOpen = startPosition
+                    #update maxBet
+                    maxBet = max(maxBet, bet)
+                    #store this action
+                    thisGameActions['Actions'][thisGameActions['Street']].append(self.PlayersList[startPosition].name(), (action, bet))
+                    #update pot
+                    self.pot = self.pot + bet
+                    
+                    if startPosition == (len(self.PlayersList) - 1 ):
+                        startPosition = 0
+                    else:
+                        startPosition = startPosition + 1
+                else:
+                    if startPosition == (len(self.PlayersList) - 1 ):
+                        startPosition = 0
+                    else:
+                        startPosition = startPosition + 1
+                
+            
+        elif thisGameActions['Street'] == 'River':
+            #TODO: add findWinner()
+            pass
+        else:
+            pass
+    
+    @staticmethod
+    def actionValidation(thisGameActions, currentAction):
         #check if the returned action is valid
+        pass
+    
+    @staticmethod
+    def playerValidation(player):
+        #get player's nChip to make sure it's calculated correctly
         pass
     
     def runGame(self):
@@ -99,7 +167,7 @@ class table():
                 return 0
         
             #prepare a new game :
-            thisGameAction = {  'Street' : 'PreFlop',
+            thisGameActions = {  'Street' : 'PreFlop',
                     'Actions' : {
                         'PreFLop' : [] ,
                         'Flop' : [] ,
@@ -124,12 +192,9 @@ class table():
             
             #all players are assumed to be all active
             #dealt card to players, and 'tell them their position in this game'
-            for pos, plyr in enumerate(self.PlayersList):
-                hand = []
-                hand.append(theDeck.dealt())
-                hand.append(theDeck.dealt())
-                plyr.startGame(hand, pos)
-                
+            self._prepareGame(theDeck)
+            #all plalyers have their cards, blinds are paid
+            
             #Game Start:
             #while loop to ask around, move to next street until every one agree on the bet
             for street in ['PreFLop', 'Flop', 'Turn', 'River']:
@@ -149,6 +214,14 @@ class table():
                             c. ALL IN, past bet < max bet and Player's nChip = 0
                 4. end this street, move to next, if street == Riever, call findWinner()
                 """
+                #update street to thisGameActions
+                thisGameActions['Street'] = street
+                #run around the table
+                self._runCurrentStreet(thisGameActions, startPosition)
+                
+                #update inGame flag
+                #update start position
+                
                 pass
             
             #remove inactive player before next game
