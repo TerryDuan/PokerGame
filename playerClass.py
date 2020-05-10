@@ -33,10 +33,13 @@ class Player():
     
     def name(self):
         return self.name
+    
+    def nChip(self):
+        return self.nChip
 
     def isActive(self):
 
-        return ((self.acitve) and (self.nChip >= 1))   
+        return ((self.active) and (self.nChip >= 1))   
 
     def isInGame(self):
         
@@ -44,9 +47,10 @@ class Player():
         
     def startGame(self, yourHand : list, yourPosition : int, cost2Start = 0):
         """
-        Called once every game
+        Called once every game, by Table
+        If Straddle is allowed, need to override this method
         """
-        #self.acitve  = True
+        #self.acitve  = True 
         self.inGame = True
         self.hand = yourHand
         self.position = yourPosition
@@ -57,6 +61,7 @@ class Player():
                 self.nChip = 0
                 return chip
             else:
+                self.nChip = self.nChip - cost2Start
                 return cost2Start
         else:
             return 0
@@ -64,12 +69,13 @@ class Player():
         
     def endGame(self, payoff : int):
         """
-        Called once every game, by Table or After 'FOLD' action
+        Called once every game, by Table, After 'FOLD' action or After River
         """
         #self.active = False
         self.inGame = False
         self.hand = []
         self.position = None
+        self.nChip = self.nChip + payoff
         
         #check if the player has enough chip for next game
         if self.nChip < 1:

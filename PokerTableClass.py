@@ -46,7 +46,7 @@ class table():
     def getNPlayer_active(self):
         n = 0
         for plyr in self.PlayersList:
-            if plyr[0].isActive():
+            if plyr.isActive():
                 n = n + 1
         
         return n
@@ -66,20 +66,67 @@ class table():
     def setMaxGames(self, maxGames : int):
         self.MAX_ITERATION = maxGames
     
-    def _prepareGame(self, theDeck):
-        #all players are assumed to be all active
-        #dealt card to players, and 'tell them their position in this game'
-        for pos, plyr in enumerate(self.PlayersList):
-            hand = []
-            hand.append(theDeck.dealt())
-            hand.append(theDeck.dealt())
-            if pos == 0:
-                blinds = plyr.startGame(hand, pos, self.sb)
-            elif pos == 1:
-                blinds = plyr.startGame(hand, pos, self.bb)
+    def _prepareGame(self, theDeck, currentSB):
+        """
+        Go through all players in PlayersList, starting from index: currentSB, keep i++, i as position Code
+        for Active Player, dealt two cards, assign i, i++
+        else skip
+        return the index of currentSB, no change, if currentSB is still Active, else return new currentSB for current Game
+
+        Parameters
+        ----------
+        theDeck : deck TYPE
+            theDeck is used to dealt cards.
+        currentSB : int TYPE
+            index of current SB player in the PlayersList .
+
+        Returns
+        -------
+        new currentSB
+
+        """
+        
+        nAllPlayers = len(self.PlayersList)
+        nActivePlayers = self.getNPlayer_active()
+        positionCode = 0
+        PlayersIndex = currentSB
+        while(positionCode < (nActivePlayers - 1)):
+
+            if self.PlayersList[PlayersIndex].isActive():
+                #it's still active
+                
+                #this player is active, prepare required blinds, store currentSB if it's SB
+                if positionCode == 0:
+                #if we just assing SB player, update new currentSB for return
+                    currentSB = PlayersIndex
+                    price2play = self.sb
+                elif positionCode == 1:
+                    price2play = self.bb
+                else:
+                    price2play = 0
+                
+                #prepare hands
+                hand = []
+                hand.append(theDeck.dealt())
+                hand.append(theDeck.dealt())        
+                
+                #ACTIVATE the Player
+                self.PlayersList[PlayersIndex].startGame(hand, positionCode, price2play)
+                
+                # Move to next position, and the next player
+                positionCode = positionCode + 1
+                PlayersIndex = PlayersIndex + 1
+                if PlayersIndex == nAllPlayers:
+                    PlayersIndex = 0
             else:
-                blinds = plyr.startGame(hand, pos, 0)
-            self.pot = self.pot + blinds
+                #it's no longer active, need to move to next Player
+                PlayersIndex = PlayersIndex + 1
+                if PlayersIndex == nAllPlayers:
+                    PlayersIndex = 0
+
+        return currentSB
+                
+
     
     
     def _runCurrentStreet(self, thisGameActions, startPosition : int, street : str):
@@ -156,6 +203,8 @@ class table():
             return 0
 
         i = 0 #game id
+        currentSB = 0 #SB players index in PlayerList
+        
         #create a deck for following game
         theDeck = Deck(1)        
  
@@ -167,6 +216,12 @@ class table():
                 return 0
         
             #prepare a new game :
+            # make sure pot is empty
+            self.pot = 0
+            
+            # Shuffle the deck
+            theDeck.shuffle(3)
+            #prepare an empty ActionHistory
             thisGameActions = {  'Street' : 'PreFlop',
                     'Actions' : {
                         'PreFLop' : [] ,
@@ -185,14 +240,11 @@ class table():
             print("Game ", " ", i)
             
             
+
             # Start a new Game, if active, dealt card, give a position, update position
-            
-            # Shuffle the deck
-            theDeck.shuffle(3)
-            
             #all players are assumed to be all active
             #dealt card to players, and 'tell them their position in this game'
-            self._prepareGame(theDeck)
+            currentSB = self._prepareGame(theDeck, currentSB)
             #all plalyers have their cards, blinds are paid
             
             #Game Start:
@@ -239,5 +291,7 @@ class table():
             
             #update game id
             i = i + 1
+            currentSB = currentSB + 1 #if out of bound, revert to 0 
+            # TODO 
             
         

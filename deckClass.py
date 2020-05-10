@@ -52,7 +52,7 @@ class Deck():
         # check if missing card, rebuild the deck if missing
         if self._checkIfCardMissing():
             print('card missing, need reCreate the Deck')
-            self.newDeck = self._createFullDeck()*nDecks
+            self.newDeck = self._createFullDeck()*self.nDecks
         
         random.seed(seed)
         random.shuffle(self.newDeck)
