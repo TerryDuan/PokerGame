@@ -94,6 +94,6 @@ class PokerCard(Card):
     #, which will be a problem for other games （other child class)
     @classmethod
     def cardsRank(cls, cards : list):
-        cards.sort(key = lambda x: cls.CARDRANK[x.rank])
+        cards.sort(key = lambda x: cls.CARDRANK[x.rank], reverse = True)
         
     

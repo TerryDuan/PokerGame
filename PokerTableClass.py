@@ -23,6 +23,7 @@ while not end:
 """
 from playerClass import Player
 from deckClass import Deck
+from TexasHoldemCalculators_v0 import *
 import numpy as np
 
 class table():
@@ -251,6 +252,22 @@ class table():
         
         return isGameEnded
         
+    def _getWinnerIndex(self, thisGameActions):
+        """
+        Review all players' cards and community card
+        Determin winner's , Return it's index
+
+        Parameters
+        ----------
+        thisGameActions : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        int
+
+        """
+        return 0;
     
     @staticmethod
     def actionValidation(thisGameActions, currentAction):
@@ -261,6 +278,7 @@ class table():
     def playerValidation(player):
         #get player's nChip to make sure it's calculated correctly
         pass
+    
     
     def runGame(self):
         """
