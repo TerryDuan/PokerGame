@@ -23,6 +23,7 @@ while not end:
 """
 from playerClass import Player
 from deckClass import Deck
+import numpy as np
 
 class table():
     
@@ -66,7 +67,7 @@ class table():
     def setMaxGames(self, maxGames : int):
         self.MAX_ITERATION = maxGames
     
-    def _prepareGame(self, theDeck, currentSB):
+    def _prepareGame(self,thisGameActions,  theDeck, currentSB):
         """
         Go through all players in PlayersList, starting from index: currentSB, keep i++, i as position Code
         for Active Player, dealt two cards, assign i, i++
@@ -75,6 +76,8 @@ class table():
 
         Parameters
         ----------
+        thisGameActions
+            Action history to store initial bet, SB BB Straddle etc.
         theDeck : deck TYPE
             theDeck is used to dealt cards.
         currentSB : int TYPE
@@ -90,6 +93,8 @@ class table():
         nActivePlayers = self.getNPlayer_active()
         positionCode = 0
         PlayersIndex = currentSB
+        tempBetHistory = [np.nan]*nAllPlayers
+        
         while(positionCode < (nActivePlayers - 1)):
 
             if self.PlayersList[PlayersIndex].isActive():
@@ -99,8 +104,10 @@ class table():
                 if positionCode == 0:
                 #if we just assing SB player, update new currentSB for return
                     currentSB = PlayersIndex
+                    tempBetHistory[PlayersIndex] = self.sb
                     price2play = self.sb
                 elif positionCode == 1:
+                    tempBetHistory[PlayersIndex] = self.bb
                     price2play = self.bb
                 else:
                     price2play = 0
@@ -111,7 +118,10 @@ class table():
                 hand.append(theDeck.dealt())        
                 
                 #ACTIVATE the Player
-                self.PlayersList[PlayersIndex].startGame(hand, positionCode, price2play)
+                initBet = self.PlayersList[PlayersIndex].startGame(hand, positionCode, price2play)
+                #Add bet to Pot (sb, bb, sttradle)
+                thisGameActions['Pot'] = self.pot + initBet
+                self.pot = self.pot + initBet
                 
                 # Move to next position, and the next player
                 positionCode = positionCode + 1
@@ -123,49 +133,124 @@ class table():
                 PlayersIndex = PlayersIndex + 1
                 if PlayersIndex == nAllPlayers:
                     PlayersIndex = 0
-
+        
+        #store initial bet
+        thisGameActions['BetHistory']['PreFlop'] = tempBetHistory
         return currentSB
                 
 
     
     
-    def _runCurrentStreet(self, thisGameActions, startPosition : int, street : str):
-        if thisGameActions['Street'] == 'PreFlop':
-            maxBet = self.bb
-            currentOpen = 1 #for PreFlop, BB is the first Opened
-            while True:
-                if startPosition == currentOpen:
-                    return 0
-                elif self.PlayersList[startPosition].isInGame():
-                    action, bet = self.PlayersList[startPosition].action(maxBet, thisGameActions)
-                    #TODO: add action validation 
-                    #if actionValidation(thisGameActions, action) == False: force Player to Fold
-                    #if he raised or bet, he become the Opened player
-                    if (action == 'Raise' or action == 'Bet') and bet > maxBet:
-                        currentOpen = startPosition
-                    #update maxBet
-                    maxBet = max(maxBet, bet)
-                    #store this action
-                    thisGameActions['Actions'][thisGameActions['Street']].append(self.PlayersList[startPosition].name(), (action, bet))
-                    #update pot
-                    self.pot = self.pot + bet
-                    
-                    if startPosition == (len(self.PlayersList) - 1 ):
-                        startPosition = 0
-                    else:
-                        startPosition = startPosition + 1
-                else:
-                    if startPosition == (len(self.PlayersList) - 1 ):
-                        startPosition = 0
-                    else:
-                        startPosition = startPosition + 1
-                
+    def _runCurrentStreet(self, thisGameActions,theDeck, currentSB : int):
+        """
+        int maxBet, max of bet in current street
+        int[] currentBets, from thisGameAvtion[betHistory]
+        startPosition = SB + 2 for Preflop or SB for else
+        playerIndex = keep track of which 
+        
+        Dealt cards for this street
+        record them to thisGameActions
+        
+        While Loop
+            End and Break if min(currentBets) == maxBet and playerIndex == startPosition
             
-        elif thisGameActions['Street'] == 'River':
-            #TODO: add findWinner()
-            pass
+            check pastBet in currentBets, calculate price to pay
+            call Player's action() at playerIndex
+            update self.pot
+            record action to thisGameActions
+            move to next playerIndex
+            update startPosition and maxBet if there is a raise
+        
+        If game end
+            Determine winner and pay winner
+        
+        Parameters
+        ----------
+        thisGameActions : dict
+            History of Actions so far in this Game.
+        theDeck : deck Class
+            Deck to dealt card
+        currentSB : int
+            currentSB.
+
+        Returns
+        -------
+        boolean
+            Default as False for PreFlop, Flop, Turn.
+            True if River, or Only one Player inGame == True
+
+        """
+        # Initialize variables:
+        
+        isGameEnded = False
+        
+        if thisGameActions['Street'] == 'PreFlop':
+            startPosition = (currentSB + 2)%len(self.PlayersList)
+            playerIndex = startPosition
+            maxBet = self.bb 
+        elif thisGameActions['Street'] == 'Flop':
+            startPosition = currentSB
+            playerIndex = startPosition
+            maxBet = 0
+            cards = []
+            cards.append(theDeck.dealt)
+            cards.append(theDeck.dealt)
+            cards.append(theDeck.dealt)
+            thisGameActions['CommunityCards'][thisGameActions['Street']] = cards            
         else:
-            pass
+            startPosition = currentSB
+            playerIndex = startPosition
+            maxBet = 0
+            cards = []
+            cards.append(theDeck.dealt)
+            thisGameActions['CommunityCards'][thisGameActions['Street']] = cards
+        
+        
+        # Start the Loop over all Players
+        while True:
+            
+            if ((min(thisGameActions['BetHistory'][thisGameActions['Street']]) == maxBet) and (playerIndex == startPosition)):
+                #END Condition
+                #TODO: Need check if the game is ended due to all Folded
+                
+                if thisGameActions['Street'] == 'River':
+                    isGameEnded = True
+                elif self.getNPlayer_inGame() == 1:
+                    isGameEnded = True
+                
+                break
+            
+            
+            pastBet = thisGameActions['BetHistory'][thisGameActions['Street']][playerIndex]
+            if ((self.PlayersList[playerIndex].isActive()) and (self.PlayersList[playerIndex].isInGame()) and ((pastBet < maxBet) or (pastBet == np.nan))):
+                
+                action, bet = self.PlayersList[playerIndex].action(np.where(pastBet == np.nan, maxBet, maxBet - pastBet), thisGameActions)
+                maxBet = max(maxBet, bet) #update maxBet
+                
+                #record actions,BetHistory,Pot
+                thisGameActions['BetHistory'][thisGameActions['Street']][playerIndex] = np.where(pastBet == np.nan, 0, pastBet) + bet
+                thisGameActions['Actions'][thisGameActions['Street'].append((self.PlayersList[playerIndex].playerName,(action, bet)))
+                thisGameActions['Pot'] = self.pot + bet
+                self.pot = self.pot + bet
+                
+                #update startPosition if there is a Raise or ALL IN
+                if ((action == 'Raise') or (action == 'ALL IN')):
+                    startPosition = playerIndex
+                    
+                #if Folded, turn isInGame to False, should have been handled by PlayerClass
+                elif action == 'Fold':
+                    self.PlayersList[playerIndex].endGame(0)
+                
+                else:
+                    #Call, do nothing
+                    pass
+                    
+            #update playerIndex
+            playerIndex = (playerIndex + 1)%len(self.PlayersList)
+                
+        
+        return isGameEnded
+        
     
     @staticmethod
     def actionValidation(thisGameActions, currentAction):
@@ -201,9 +286,10 @@ class table():
         if self.getNPlayer() < 3:
             print('not enough players')
             return 0
-
+        
+        # Control Variables for the WHILE LOOP below
         i = 0 #game id
-        currentSB = 0 #SB players index in PlayerList
+        currentSB = 0 #SB marker : SB players index in PlayerList
         
         #create a deck for following game
         theDeck = Deck(1)        
@@ -211,6 +297,7 @@ class table():
         #Start the 'tournament'
         while True:
             
+            # EXIT Condition:
             if ((i == self.MAX_ITERATION) or (self.getNPlayer_active() < 3)):
                 print('All games end')
                 return 0
@@ -229,6 +316,12 @@ class table():
                         'Turn' : [] ,
                         'River' : []
                         },
+                    'BetHistory' : {
+                        'PreFlop' : [],
+                        'Flop' : [],
+                        'Turn' : [],
+                        'River' : []
+                        },
                     'CommunityCards' : {
                         'Flop' : [] ,
                         'Turn' : [] ,
@@ -242,23 +335,20 @@ class table():
             
 
             # Start a new Game, if active, dealt card, give a position, update position
-            #all players are assumed to be all active
-            #dealt card to players, and 'tell them their position in this game'
-            currentSB = self._prepareGame(theDeck, currentSB)
+            # dealt card to players, and 'tell them their position in this game'
+            currentSB = self._prepareGame(thisGameActions, theDeck, currentSB) #returned adjusted/fixed currentSB
+            # adjust currentSB to next player for next game
+            currentSB = currentSB + 1
             #all plalyers have their cards, blinds are paid
             
             #Game Start:
             #while loop to ask around, move to next street until every one agree on the bet
             for street in ['PreFLop', 'Flop', 'Turn', 'River']:
-                
-                if street == 'PreFlop':
-                    startPosition = 2
-                else:
-                    startPosition = 0
+
                     
                 """
                 TODO: 
-                1. PreFlop, force player 0 and player 1 pay SB and BB
+                1. PreFlop, force player 0 and player 1 pay SB and BB , DONE in prepareGame()
                 2. Track current max bet, and ask for diff between past bet and max bet
                 3. Loop all players, until all players
                     either: a. Fold and isInGame = False
@@ -268,30 +358,22 @@ class table():
                 """
                 #update street to thisGameActions
                 thisGameActions['Street'] = street
-                #run around the table
-                self._runCurrentStreet(thisGameActions, startPosition)
+                #run currentStreet and return True if game ended
+                gameEnd = self._runCurrentStreet(thisGameActions,theDeck, currentSB)
                 
-                #update inGame flag
-                #update start position
+                if gameEnd:
+                    #Determin Winner
+                    #TODO: winner function
+                    break
                 
-                pass
             
-            #remove inactive player before next game
-            temp = []
-            for plyr in self.PlayersList:
-                if plyr.isActive() == True:
-                    temp.append(plyr)
-            self.PlayersList = temp
             
-            #change the PlayersList order, move all to right, last to front
-            #should we 'move' the seats before remove inactive player?
-            temp_player = self.PlayersList.pop()
-            self.PlayersList.insert(0, temp_player)
-            
+            # Current Game ends
             
             #update game id
             i = i + 1
-            currentSB = currentSB + 1 #if out of bound, revert to 0 
-            # TODO 
+            #update currentSB
+            currentSB = (currentSB + 1)%len(self.PlayersList) 
+
             
         
