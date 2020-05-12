@@ -96,4 +96,6 @@ class PokerCard(Card):
     def cardsRank(cls, cards : list):
         cards.sort(key = lambda x: cls.CARDRANK[x.rank], reverse = True)
         
-    
+    @classmethod
+    def cardsRankBySuitRank(cls, cards : list):
+        cards.sort(key = lambda x: [x.suit,cls.CARDRANK[x.rank]], reverse = True)
