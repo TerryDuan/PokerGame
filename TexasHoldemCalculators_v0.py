@@ -39,23 +39,23 @@ def find_best_combo(cards):
     HighCard = find_high_card(cards)
     
     if SFhead != None:
-        return "StraightFlush", SFhead
+        return 1, SFhead
     elif Quadhead != None:
-        return "Quad", Quadhead
+        return 2, Quadhead
     elif FullHousehead != None:
-        return "FullHouse", FullHousehead
+        return 3, FullHousehead
     elif Flushhead != None:
-        return "Flush", Flushhead
+        return 4, Flushhead
     elif Straighthead != None:
-        return "", Straighthead
+        return 5, Straighthead
     elif Sethead != None:
-        return "", Sethead
+        return 6, Sethead
     elif TwoPairs != None:
-        return "", TwoPairs
+        return 7, TwoPairs
     elif Pairhead != None:
-        return "", Pairhead
+        return 8, Pairhead
     else:
-        return "", HighCard
+        return 9, HighCard
 
 def find_straight(cards):
     PokerCard.cardsRank(cards)
@@ -81,7 +81,7 @@ def find_straight(cards):
         if len(StraightList) == 5:
             #found the fifth one
             #hasStraight = True
-            return StraightList[0]
+            return StraightList
         
     return None
         
@@ -103,11 +103,25 @@ def find_flush(cards):
         
         if len(FlushList) == 5:
             #found the Set
-            return FlushList[0]
+            return FlushList
 
     return None
 
 def find_straight_flush(cards):
+    """
+    Find Straight Flush
+
+    Parameters
+    ----------
+    cards : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    SFList : TYPE
+        DESCRIPTION.
+
+    """
     PokerCard.cardsRankBySuitRank(cards)
     SFList = []
     prevCard = cards[0]
@@ -125,11 +139,25 @@ def find_straight_flush(cards):
         
         if len(SFList) == 5:
             #found the Set
-            return SFList[0]
+            return SFList
 
     return None
 
 def find_quad(cards):
+    """
+    Find best quads + one high card
+
+    Parameters
+    ----------
+    cards : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    QuadList : TYPE
+        DESCRIPTION.
+
+    """
     PokerCard.cardsRank(cards)
     QuadList = []
     prevCard = cards[0]
@@ -147,101 +175,250 @@ def find_quad(cards):
         
         if len(QuadList) == 4:
             #found the Set
-            return QuadList[0]
-
-    return None
+            break
+        
+    if len(QuadList) == 4:
+        for card in cards:
+            if card - QuadList[0] != 0:
+                QuadList.append(card)
+                return QuadList
+    else:
+        return None
 
 def find_fullhouse(cards):
     setHead = find_set(cards)
     pairsHead = find_two_pairs(cards)
+    fullhouseList = []    
     
-    if len(pairsHead) > 0 and setHead != None:
+    if len(pairsHead) > 0 and len(setHead) > 0:
+        fullhouseList = setHead[0:3]
         for card in pairsHead:
-            if card - setHead != 0:
-                return setHead
+            if card - setHead[0] != 0:
+                fullhouseList.append(card)
+            
+            if len(fullhouseList) == 5:
+                return fullhouseList
+    
         
     return None
     
 
 def find_set(cards):
+    """
+    Find best three cards with same rank + two highest ranked cards
+
+    Parameters
+    ----------
+    cards : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    TYPE
+        DESCRIPTION.
+
+    """
     PokerCard.cardsRank(cards)
     SetList = []
-    prevCard = cards[0]
-    SetList.append(prevCard)
-    for card in cards[1:]:
-        
-        #check if current one is next to prevCard
-        if prevCard - card != 0:
-            SetList = []
-            SetList.append(card)
-        else:
-            SetList.append(card)
-        
-        prevCard = card
-        
-        if len(SetList) == 3:
-            #found the Set
-            return SetList[0]
-
-    return None
-
-def find_pair(cards):
-    PokerCard.cardsRank(cards)
     
     try:
         prevCard = cards[0]
     except:
         return None
     
+    SetList.append(prevCard)
     
     for card in cards[1:]:
 
         #check if current one is next to prevCard
         if prevCard - card == 0:
-            return prevCard
+            SetList.append(card)
         else:
-            prevCard = card
+            SetList = []
+            SetList.append(card)
         
-    return None
+        prevCard = card
+        
+        if len(SetList) == 3:
+            break
+        
+        
+    if len(SetList) == 3:
+        for card in cards:
+            if card - SetList[0] != 0:
+                SetList.append(card)
+                
+            if len(SetList) == 5:
+                return SetList
+            
+        return None
+    else:
+        return None
 
-def find_two_pairs(cards):
+def find_pair(cards):
+    """
+    Find best pair of cards + three highest ranked cards
+
+    Parameters
+    ----------
+    cards : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    prevCard : TYPE
+        DESCRIPTION.
+
+    """
     PokerCard.cardsRank(cards)
+    PairsList = []
     
     try:
         prevCard = cards[0]
     except:
         return None
     
-    pairsHeads = []
-    index = 1
+    PairsList.append(prevCard)
     
-    if len(cards) > 1:
-        while index < len(cards):
-            if prevCard - cards[index] == 0:
-                pairsHeads.append(prevCard)
-                
-                if index + 1 == len(cards):
-                    break#early stop, TODO: overwrite the loop to do while loop.
-                
-                prevCard = cards[index + 1]
-                index = index + 2
-            else:
-                prevCard = cards[index]
-                index = index + 1
-            
+    for card in cards[1:]:
+
+        #check if current one is next to prevCard
+        if prevCard - card == 0:
+            PairsList.append(card)
+            break
+        else:
+            PairsList = []
+            PairsList.append(card)
         
-    return pairsHeads
+        prevCard = card
+        
+    if len(PairsList) == 2:
+        for card in cards:
+            if card - PairsList[0] != 0:
+                PairsList.append(card)
+                
+            if len(PairsList) == 5:
+                return PairsList
+            
+        return None
+    else:
+        return None
+
+def find_two_pairs(cards):
+    """
+    Find best two pairs + one highest ranked cards
+
+    Parameters
+    ----------
+    cards : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    pairsHeads : TYPE
+        DESCRIPTION.
+
+    """
+    PokerCard.cardsRank(cards)
+    PairsList = []
+    
+    try:
+        prevCard = cards[0]
+    except:
+        return None
+    
+    PairsList.append(prevCard)
+    
+    for card in cards[1:]:
+
+        #check if current one is next to prevCard
+        if prevCard - card == 0:
+            PairsList.append(card)
+            break
+        else:
+            PairsList = []
+            PairsList.append(card)
+        
+        prevCard = card
+    
+    AnotherPairs = []    
+    if len(PairsList) == 2:
+        prevCard = cards[0]
+        for card in cards[1:]:
+            if ((prevCard - card == 0)&(card - PairsList[0] != 0)):
+                AnotherPairs.append(prevCard)
+                AnotherPairs.append(card)
+                break
+            else:
+                prevCard = card
+        
+    TwoPairs = []
+    TwoPairs = TwoPairs + PairsList + AnotherPairs
+    
+    if len(TwoPairs) == 4:
+        for card in cards:
+            if ((card - PairsList[0] != 0)&(card - AnotherPairs[0] != 0)):
+                TwoPairs.append(card)
+                break
+        
+        return TwoPairs
+    else:
+        return None
 
 def find_high_card(cards):
     PokerCard.cardsRank(cards)
     try:
-        return cards[0]
+        return cards[0:5]
     except:
         print("No Cards in the List")
         return None
 
-def find_winner(**args):
+def find_winner(community_cards , player_hands):
     """
-    given multiple players hands, and community cards, determin the winner
+    Combine community_cards with each player's hand, compare ComboRank
+    
+    Parameters
+    ----------
+    community_cards : List
+        List of five cards.
+    player_hands : Dict
+        key : player's index,
+        value : list of two cards
+
+    Returns
+    -------
+    list of winner(s)
+
     """
-    pass
+    results = []
+    for key in player_hands:
+        cards = community_cards + player_hands[key]
+        ComboRank, Combo = find_best_combo(cards)
+        results.append((key, ComboRank, Combo))
+    
+    results.sort(key = lambda x: x[1])
+    all_winners = [] #for multiple users
+    
+    if len(results) == 1:
+        return [results[0][0]]
+    else:
+        bestResult = results[0]
+        all_winners.append(bestResult)
+        for result in results[1:]:
+            
+            if bestResult[1] != result[1]:
+                break
+            else:
+                all_winners.append(result)
+                
+            bestResult = result
+                
+    if len(all_winners) == 1:
+        return [all_winners[0][0]]
+    else:
+        for result in all_winners:
+            #TODO: diff senararios based on combe
+            pass
+    
+    
+        
