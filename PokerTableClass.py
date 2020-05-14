@@ -23,7 +23,7 @@ while not end:
 """
 from playerClass import Player
 from deckClass import Deck
-from TexasHoldemCalculators_v0 import *
+import TexasHoldemCalculators_v0 as calc
 import numpy as np
 
 class table():
@@ -252,22 +252,6 @@ class table():
         
         return isGameEnded
         
-    def _getWinnerIndex(self, thisGameActions):
-        """
-        Review all players' cards and community card
-        Determin winner's , Return it's index
-
-        Parameters
-        ----------
-        thisGameActions : TYPE
-            DESCRIPTION.
-
-        Returns
-        -------
-        int
-
-        """
-        return 0;
     
     @staticmethod
     def actionValidation(thisGameActions, currentAction):
@@ -382,10 +366,40 @@ class table():
                 if gameEnd:
                     #Determin Winner
                     #TODO: winner function
+                    if self.getNPlayer_inGame() == 1:
+                        index = 0
+                        for i, plyr in enumerate(self.PlayersList):
+                            if plyr.isInGame() == True:
+                                index = i
+                        print("All other players folded, Winner is " + self.PlayersList[index].name() + ' at position ' + index)
+                        self.PlayersList[index].endGame(self.pot) #pay the player
+                        self.pot = 0
+                    elif len(thisGameActions['CommunityCards']['River']) == 0:
+                        print("Error no enough community cards to find winner")
+                    elif self.getNPlayer_inGame < 2:
+                        print("Error no enough remaining players")
+                    else:
+                        #Need to compare players hands:
+                        community_card = thisGameActions['CommunityCards']['Flop'] + thisGameActions['CommunityCards']['Turn'] + thisGameActions['CommunityCards']['River']
+                        players_hand = {}
+                        for index, plyr in enumerate(self.PlayersList):
+                            if((plyr.isInGame())&(plyr.isActive())):
+                                players_hand[index] = plyr.hand
+                        
+                        winners_list = calc.find_winner(community_card, players_hand)
+                        
+                        profits = self.pot/len(winners_list)
+                        
+                        for player_index in winners_list:
+                            self.PlayersList[player_index].endGame(profits)
+                            
+                        self.pot = 0
+                        
+                    
                     break
                 
             
-            
+
             # Current Game ends
             
             #update game id

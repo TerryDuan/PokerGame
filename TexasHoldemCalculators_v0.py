@@ -83,6 +83,10 @@ def find_straight(cards):
             #hasStraight = True
             return StraightList
         
+        if ((len(StraightList) == 4)&(StraightList[0].rank == '5')&(cards[0].rank == '1')):
+            StraightList.append(cards[0])
+            return StraightList            
+
     return []
         
 def find_flush(cards):
@@ -140,6 +144,14 @@ def find_straight_flush(cards):
         if len(SFList) == 5:
             #found the Set
             return SFList
+    
+    index = 0
+    while ((len(SFList) == 4)&(SFList[0].rank == '5')&(cards[index].rank == '1')&(index<len(cards))):
+        if (cards[index] == SFList[0]):
+            SFList.append(cards[index])
+            return SFList
+        else:
+            index = index + 1
 
     return []
 
@@ -408,7 +420,7 @@ def find_winner(community_cards , player_hands):
         for result in results[1:]:
             
             if bestResult[1] != result[1]:
-                return all_winners
+                return _prepare_winner_index_list(all_winners)
             else:
                 all_winners.append(result)
                 
