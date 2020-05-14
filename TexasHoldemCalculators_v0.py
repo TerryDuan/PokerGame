@@ -400,14 +400,15 @@ def find_winner(community_cards , player_hands):
     all_winners = [] #for multiple users
     
     if len(results) == 1:
-        return [results[0][0]]
+        all_winners.append(results[0][0])
+        return all_winners
     else:
         bestResult = results[0]
-        all_winners.append(bestResult)
+        all_winners.append(bestResult[0])
         for result in results[1:]:
             
             if bestResult[1] != result[1]:
-                break
+                return all_winners
             else:
                 all_winners.append(result)
                 
@@ -416,9 +417,40 @@ def find_winner(community_cards , player_hands):
     if len(all_winners) == 1:
         return [all_winners[0][0]]
     else:
-        for result in all_winners:
+        final_winner_list = []
+        
+        maxWinner = all_winners[0]
+        for result in all_winners[1:]:
             #TODO: diff senararios based on combe
-            pass
-    
+            prevVScurrent = _compareTwoCombo(maxWinner[2], result[2])
+            
+            if prevVScurrent == -1:
+                maxWinner = result
+                
+        for result in all_winners:
+            
+            prevVScurrent = _compareTwoCombo(maxWinner[2], result[2])
+            if ((prevVScurrent != 1) or (prevVScurrent != -1)):
+                final_winner_list.append(result[0])
+                
+        
+        return final_winner_list
+                
+
+def _compareTwoCombo(combo1, combo2):
+    if ((len(combo1) != len(combo2)) or (len(combo1) == 0) or (len(combo2) == 0)):
+        return None
+    else:
+        i = 0
+        while i < len(combo1):
+            
+            if combo1[i] - combo2[i] > 0:
+                return 1
+            elif combo1[i] - combo2[i] < 0:
+                return -1
+            else:
+                i = i + 1
+        
+        return 0
     
         
