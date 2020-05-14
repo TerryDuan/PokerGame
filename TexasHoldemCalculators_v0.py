@@ -38,21 +38,21 @@ def find_best_combo(cards):
     Pairhead = find_pair(cards)
     HighCard = find_high_card(cards)
     
-    if SFhead != None:
+    if len(SFhead) != 0:
         return 1, SFhead
-    elif Quadhead != None:
+    elif len(Quadhead) != 0:
         return 2, Quadhead
-    elif FullHousehead != None:
+    elif len(FullHousehead) != 0:
         return 3, FullHousehead
-    elif Flushhead != None:
+    elif len(Flushhead) != 0:
         return 4, Flushhead
-    elif Straighthead != None:
+    elif len(Straighthead) != 0:
         return 5, Straighthead
-    elif Sethead != None:
+    elif len(Sethead) != 0:
         return 6, Sethead
-    elif TwoPairs != None:
+    elif len(TwoPairs) != 0:
         return 7, TwoPairs
-    elif Pairhead != None:
+    elif len(Pairhead) != 0:
         return 8, Pairhead
     else:
         return 9, HighCard
@@ -83,7 +83,7 @@ def find_straight(cards):
             #hasStraight = True
             return StraightList
         
-    return None
+    return []
         
 def find_flush(cards):
     PokerCard.cardsRankBySuitRank(cards)
@@ -105,7 +105,7 @@ def find_flush(cards):
             #found the Set
             return FlushList
 
-    return None
+    return []
 
 def find_straight_flush(cards):
     """
@@ -141,7 +141,7 @@ def find_straight_flush(cards):
             #found the Set
             return SFList
 
-    return None
+    return []
 
 def find_quad(cards):
     """
@@ -183,7 +183,7 @@ def find_quad(cards):
                 QuadList.append(card)
                 return QuadList
     else:
-        return None
+        return []
 
 def find_fullhouse(cards):
     setHead = find_set(cards)
@@ -200,7 +200,7 @@ def find_fullhouse(cards):
                 return fullhouseList
     
         
-    return None
+    return []
     
 
 def find_set(cards):
@@ -224,7 +224,7 @@ def find_set(cards):
     try:
         prevCard = cards[0]
     except:
-        return None
+        return []
     
     SetList.append(prevCard)
     
@@ -251,9 +251,9 @@ def find_set(cards):
             if len(SetList) == 5:
                 return SetList
             
-        return None
+        return []
     else:
-        return None
+        return []
 
 def find_pair(cards):
     """
@@ -276,7 +276,7 @@ def find_pair(cards):
     try:
         prevCard = cards[0]
     except:
-        return None
+        return []
     
     PairsList.append(prevCard)
     
@@ -300,9 +300,9 @@ def find_pair(cards):
             if len(PairsList) == 5:
                 return PairsList
             
-        return None
+        return []
     else:
-        return None
+        return []
 
 def find_two_pairs(cards):
     """
@@ -325,7 +325,7 @@ def find_two_pairs(cards):
     try:
         prevCard = cards[0]
     except:
-        return None
+        return []
     
     PairsList.append(prevCard)
     
@@ -363,7 +363,7 @@ def find_two_pairs(cards):
         
         return TwoPairs
     else:
-        return None
+        return []
 
 def find_high_card(cards):
     PokerCard.cardsRank(cards)
@@ -371,7 +371,7 @@ def find_high_card(cards):
         return cards[0:5]
     except:
         print("No Cards in the List")
-        return None
+        return []
 
 def find_winner(community_cards , player_hands):
     """
@@ -400,11 +400,11 @@ def find_winner(community_cards , player_hands):
     all_winners = [] #for multiple users
     
     if len(results) == 1:
-        all_winners.append(results[0][0])
-        return all_winners
+        all_winners.append(results[0])
+        return _prepare_winner_index_list(all_winners)
     else:
         bestResult = results[0]
-        all_winners.append(bestResult[0])
+        all_winners.append(bestResult)
         for result in results[1:]:
             
             if bestResult[1] != result[1]:
@@ -415,13 +415,14 @@ def find_winner(community_cards , player_hands):
             bestResult = result
                 
     if len(all_winners) == 1:
-        return [all_winners[0][0]]
+        return _prepare_winner_index_list(all_winners) #one winner
     else:
         final_winner_list = []
         
         maxWinner = all_winners[0]
         for result in all_winners[1:]:
             #TODO: diff senararios based on combe
+            #print(maxWinner, result)
             prevVScurrent = _compareTwoCombo(maxWinner[2], result[2])
             
             if prevVScurrent == -1:
@@ -430,12 +431,18 @@ def find_winner(community_cards , player_hands):
         for result in all_winners:
             
             prevVScurrent = _compareTwoCombo(maxWinner[2], result[2])
-            if ((prevVScurrent != 1) or (prevVScurrent != -1)):
+            if ((prevVScurrent != 1) and (prevVScurrent != -1)):
                 final_winner_list.append(result[0])
                 
         
         return final_winner_list
                 
+
+def _prepare_winner_index_list(all_winners):
+    final_list = []
+    for winner in all_winners:
+        final_list.append(winner[0])
+    return final_list
 
 def _compareTwoCombo(combo1, combo2):
     if ((len(combo1) != len(combo2)) or (len(combo1) == 0) or (len(combo2) == 0)):
