@@ -25,6 +25,7 @@ from playerClass import Player
 from deckClass import Deck
 import TexasHoldemCalculators_v0 as calc
 import numpy as np
+import math
 
 class table():
     
@@ -43,7 +44,7 @@ class table():
         return self.pot
     
     def getNPlayer(self):
-        return len(self.PlayerList)
+        return len(self.PlayersList)
     
     def getNPlayer_active(self):
         n = 0
@@ -56,7 +57,7 @@ class table():
     def getNPlayer_inGame(self):
         n = 0
         for plyr in self.PlayersList:
-            if plyr[0].isInGame():
+            if plyr.isInGame():
                 n = n + 1
         
         return n
@@ -95,6 +96,7 @@ class table():
         positionCode = 0
         PlayersIndex = currentSB
         tempBetHistory = [np.nan]*nAllPlayers
+        tempBetHistory_other_street = [np.nan]*nAllPlayers
         
         while(positionCode < (nActivePlayers - 1)):
 
@@ -137,6 +139,9 @@ class table():
         
         #store initial bet
         thisGameActions['BetHistory']['PreFlop'] = tempBetHistory
+        thisGameActions['BetHistory']['Flop'] = tempBetHistory_other_street
+        thisGameActions['BetHistory']['Turn'] = tempBetHistory_other_street
+        thisGameActions['BetHistory']['River'] = tempBetHistory_other_street
         return currentSB
                 
 
@@ -194,21 +199,23 @@ class table():
             playerIndex = startPosition
             maxBet = 0
             cards = []
-            cards.append(theDeck.dealt)
-            cards.append(theDeck.dealt)
-            cards.append(theDeck.dealt)
+            cards.append(theDeck.dealt())
+            cards.append(theDeck.dealt())
+            cards.append(theDeck.dealt())
             thisGameActions['CommunityCards'][thisGameActions['Street']] = cards            
         else:
             startPosition = currentSB
             playerIndex = startPosition
             maxBet = 0
             cards = []
-            cards.append(theDeck.dealt)
+            cards.append(theDeck.dealt())
             thisGameActions['CommunityCards'][thisGameActions['Street']] = cards
         
         
         # Start the Loop over all Players
         while True:
+            print("\nCurrent street " , thisGameActions['Street'], " on Player at Index : ", playerIndex, " with Past Bet of ", thisGameActions['BetHistory'][thisGameActions['Street']][playerIndex])
+            print("Current maxBet: ", maxBet, " by Player at Index: ", startPosition, " in Game? ", self.PlayersList[playerIndex].isInGame())
             
             if ((min(thisGameActions['BetHistory'][thisGameActions['Street']]) == maxBet) and (playerIndex == startPosition)):
                 #END Condition
@@ -221,25 +228,40 @@ class table():
                 
                 break
             
+            ### Checks
+            print("Current Pot: " , thisGameActions['Pot'])
+            #print(self.PlayersList[playerIndex].isActive())
+            #print(self.PlayersList[playerIndex].isInGame())
+            #print(math.isnan(thisGameActions['BetHistory'][thisGameActions['Street']][playerIndex]))
+            
+            if((self.PlayersList[playerIndex].isActive()) and (self.PlayersList[playerIndex].isInGame()) and ((thisGameActions['BetHistory'][thisGameActions['Street']][playerIndex] < maxBet) or (math.isnan(thisGameActions['BetHistory'][thisGameActions['Street']][playerIndex])))):
+                pass
+            else:
+                break
+            ### Checks
             
             pastBet = thisGameActions['BetHistory'][thisGameActions['Street']][playerIndex]
-            if ((self.PlayersList[playerIndex].isActive()) and (self.PlayersList[playerIndex].isInGame()) and ((pastBet < maxBet) or (pastBet == np.nan))):
+            if ((self.PlayersList[playerIndex].isActive()) and (self.PlayersList[playerIndex].isInGame()) and ((pastBet < maxBet) or (math.isnan(pastBet)))):
                 
-                action, bet = self.PlayersList[playerIndex].action(np.where(pastBet == np.nan, maxBet, maxBet - pastBet), thisGameActions)
+                print("Call for action on Player at Index: ", playerIndex)
+                
+                action, bet = self.PlayersList[playerIndex].action(np.where(math.isnan(pastBet), maxBet, maxBet - pastBet), thisGameActions)
                 maxBet = max(maxBet, bet) #update maxBet
                 
+                print("Player at Index's Action: ", action, " with bet: ", bet)
+                
                 #record actions,BetHistory,Pot
-                thisGameActions['BetHistory'][thisGameActions['Street']][playerIndex] = np.where(pastBet == np.nan, 0, pastBet) + bet
-                thisGameActions['Actions'][thisGameActions['Street'].append((self.PlayersList[playerIndex].playerName,(action, bet)))
-                thisGameActions['Pot'] = self.pot + bet
+                thisGameActions['BetHistory'][thisGameActions['Street']][playerIndex] = np.where(math.isnan(pastBet), 0, pastBet) + bet
+                thisGameActions['Actions'][thisGameActions['Street']].append((self.PlayersList[playerIndex].name,(action, bet)))
+                thisGameActions['Pot'] = thisGameActions['Pot'] + bet
                 self.pot = self.pot + bet
                 
                 #update startPosition if there is a Raise or ALL IN
-                if ((action == 'Raise') or (action == 'ALL IN')):
+                if ((action.upper() == 'RAISE') or (action.upper() == 'ALL IN')):
                     startPosition = playerIndex
                     
                 #if Folded, turn isInGame to False, should have been handled by PlayerClass
-                elif action == 'Fold':
+                elif action.upper() == 'FOLD':
                     self.PlayersList[playerIndex].endGame(0)
                 
                 else:
@@ -290,7 +312,7 @@ class table():
             return 0
         
         # Control Variables for the WHILE LOOP below
-        i = 0 #game id
+        GAME_ID = 0 #game id
         currentSB = 0 #SB marker : SB players index in PlayerList
         
         #create a deck for following game
@@ -300,8 +322,11 @@ class table():
         while True:
             
             # EXIT Condition:
-            if ((i == self.MAX_ITERATION) or (self.getNPlayer_active() < 3)):
-                print('All games end')
+            if ((GAME_ID == self.MAX_ITERATION) or (self.getNPlayer_active() < 3)):
+                print('*******ALL GAMES END*******')
+                print("Summary")
+                for plyr in self.PlayersList:
+                    print(plyr.name, ' has remaining stack of ', str(plyr.nChip))
                 return 0
         
             #prepare a new game :
@@ -313,7 +338,7 @@ class table():
             #prepare an empty ActionHistory
             thisGameActions = {  'Street' : 'PreFlop',
                     'Actions' : {
-                        'PreFLop' : [] ,
+                        'PreFlop' : [] ,
                         'Flop' : [] ,
                         'Turn' : [] ,
                         'River' : []
@@ -329,12 +354,12 @@ class table():
                         'Turn' : [] ,
                         'River' : []                                
                         },
-                    'Pot' : self.pot,
+                    'Pot' : 0,
                     'NPlayers' : len(self.PlayersList)}
             
-            print("Game ", " ", i)
+            print("Game ", " ", GAME_ID)
             
-            
+            #print(thisGameActions)
 
             # Start a new Game, if active, dealt card, give a position, update position
             # dealt card to players, and 'tell them their position in this game'
@@ -345,7 +370,7 @@ class table():
             
             #Game Start:
             #while loop to ask around, move to next street until every one agree on the bet
-            for street in ['PreFLop', 'Flop', 'Turn', 'River']:
+            for street in ['PreFlop', 'Flop', 'Turn', 'River']:
 
                     
                 """
@@ -365,7 +390,7 @@ class table():
                 
                 if gameEnd:
                     #Determin Winner
-                    #TODO: winner function
+                    #TODO: Some Pot are not fully distributed to Players
                     if self.getNPlayer_inGame() == 1:
                         index = 0
                         for i, plyr in enumerate(self.PlayersList):
@@ -376,7 +401,7 @@ class table():
                         self.pot = 0
                     elif len(thisGameActions['CommunityCards']['River']) == 0:
                         print("Error no enough community cards to find winner")
-                    elif self.getNPlayer_inGame < 2:
+                    elif self.getNPlayer_inGame() < 2:
                         print("Error no enough remaining players")
                     else:
                         #Need to compare players hands:
@@ -388,6 +413,21 @@ class table():
                         
                         winners_list = calc.find_winner(community_card, players_hand)
                         
+                        print("Winner(s) is(are) " , winners_list)
+                        print("Community Cards: ")
+                        for i in community_card:
+                            print(i.prettyCard())
+                        
+                        print("----------------------")
+                        print("winner hands: ")
+                        for winner_index in winners_list:
+                            
+                            print("winner " + str(winner_index))
+                            print(self.PlayersList[winner_index].hand[0].prettyCard())
+                            print(self.PlayersList[winner_index].hand[1].prettyCard())
+                            print("----------------------")
+                        
+                        #chop:
                         profits = self.pot/len(winners_list)
                         
                         for player_index in winners_list:
@@ -403,7 +443,7 @@ class table():
             # Current Game ends
             
             #update game id
-            i = i + 1
+            GAME_ID = GAME_ID + 1
             #update currentSB
             currentSB = (currentSB + 1)%len(self.PlayersList) 
 

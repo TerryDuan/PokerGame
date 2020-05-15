@@ -83,6 +83,8 @@ class Player():
      
     def action(self, chipsToCall : int, thisGameActions : dict):
         """
+        Dummy Player for testing purpose
+        
         chipsToCall : number of chips need to pay to call, >= 0
         thisGameActions : {
                             'Street' : 'PreFlop/Flop/Turn/River',
@@ -103,10 +105,11 @@ class Player():
         
         
         if self.position < 2:
-            #currently big or small blind
-            #pay the blinds, and call any bet
-            self.nChip = self.nChip + self.position - chipsToCall
+            self.nChip = self.nChip - chipsToCall
             return 'CALL' , chipsToCall
+        elif chipsToCall < self.nChip:
+            self.nChip = self.nChip - chipsToCall
+            return 'CALL', chipsToCall
         else:
             self.endGame(0)
             return 'FOLD' , 0
