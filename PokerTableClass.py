@@ -26,6 +26,8 @@ from deckClass import Deck
 import TexasHoldemCalculators_v0 as calc
 import numpy as np
 import math
+from datetime import datetime
+import pickle
 
 class table():
     
@@ -315,6 +317,10 @@ class table():
         GAME_ID = 0 #game id
         currentSB = 0 #SB marker : SB players index in PlayerList
         
+        #prepare pickle file to store game history
+        filename = 'history_' + datetime.today().strftime('%Y_%m_%d_%H_%M_%S') + '.pickle'
+        outfile = open('./' + filename, 'wb')
+        
         #create a deck for following game
         theDeck = Deck(1)        
  
@@ -323,10 +329,14 @@ class table():
             
             # EXIT Condition:
             if ((GAME_ID == self.MAX_ITERATION) or (self.getNPlayer_active() < 3)):
-                print('*******ALL GAMES END*******')
+                print('*******ALL GAMES END**********')
                 print("Summary")
                 for plyr in self.PlayersList:
                     print(plyr.name, ' has remaining stack of ', str(plyr.nChip))
+                    
+                print('*******Save Game History******')
+                outfile.close()
+                
                 return 0
         
             #prepare a new game :
@@ -334,7 +344,8 @@ class table():
             self.pot = 0
             
             # Shuffle the deck
-            theDeck.shuffle(3)
+            seed = int(datetime.today().strftime('%Y-%m-%d-%H:%M:%S')[15]) * int(datetime.today().strftime('%Y-%m-%d-%H:%M:%S')[18])
+            theDeck.shuffle(seed)
             #prepare an empty ActionHistory
             thisGameActions = {  'Street' : 'PreFlop',
                     'Actions' : {
@@ -355,7 +366,9 @@ class table():
                         'River' : []                                
                         },
                     'Pot' : 0,
-                    'NPlayers' : len(self.PlayersList)}
+                    'NPlayers' : len(self.PlayersList),
+                    'Winners' : []
+                    }
             
             print("Game ", " ", GAME_ID)
             
@@ -365,7 +378,7 @@ class table():
             # dealt card to players, and 'tell them their position in this game'
             currentSB = self._prepareGame(thisGameActions, theDeck, currentSB) #returned adjusted/fixed currentSB
             # adjust currentSB to next player for next game
-            currentSB = currentSB + 1
+            #currentSB = currentSB + 1 #updated at last step
             #all plalyers have their cards, blinds are paid
             
             #Game Start:
@@ -426,7 +439,9 @@ class table():
                             print(self.PlayersList[winner_index].hand[0].prettyCard())
                             print(self.PlayersList[winner_index].hand[1].prettyCard())
                             print("----------------------")
-                        
+                            
+                            thisGameActions['Winners'].append((winner_index, self.PlayersList[winner_index]))
+                            
                         #chop:
                         profits = self.pot/len(winners_list)
                         
@@ -441,6 +456,9 @@ class table():
             
 
             # Current Game ends
+            
+            #save history
+            pickle.dump(thisGameActions, outfile)
             
             #update game id
             GAME_ID = GAME_ID + 1

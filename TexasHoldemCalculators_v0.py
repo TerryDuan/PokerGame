@@ -433,7 +433,6 @@ def find_winner(community_cards , player_hands):
         
         maxWinner = all_winners[0]
         for result in all_winners[1:]:
-            #TODO: diff senararios based on combe
             #print(maxWinner, result)
             prevVScurrent = _compareTwoCombo(maxWinner[2], result[2])
             
@@ -456,6 +455,7 @@ def _prepare_winner_index_list(all_winners):
         final_list.append(winner[0])
     return final_list
 
+#TODO: Not able to separate winners with two pairs
 def _compareTwoCombo(combo1, combo2):
     if ((len(combo1) != len(combo2)) or (len(combo1) == 0) or (len(combo2) == 0)):
         return None
