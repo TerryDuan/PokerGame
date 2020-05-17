@@ -100,7 +100,7 @@ class table():
         tempBetHistory = [np.nan]*nAllPlayers
         tempBetHistory_other_street = [np.nan]*nAllPlayers
         
-        while(positionCode < (nActivePlayers - 1)):
+        while(positionCode < (nActivePlayers )): #while minused 1 before??
 
             if self.PlayersList[PlayersIndex].isActive():
                 #it's still active
@@ -149,7 +149,7 @@ class table():
 
     
     
-    def _runCurrentStreet(self, thisGameActions,theDeck, currentSB : int):
+    def _runCurrentStreet(self, thisGameActions,theDeck, currentSB : int,file):
         """
         int maxBet, max of bet in current street
         int[] currentBets, from thisGameAvtion[betHistory]
@@ -180,7 +180,8 @@ class table():
             Deck to dealt card
         currentSB : int
             currentSB.
-
+        file : os.file
+            log file for history
         Returns
         -------
         boolean
@@ -216,12 +217,24 @@ class table():
         
         # Start the Loop over all Players
         while True:
-            print("\nCurrent street " , thisGameActions['Street'], " on Player at Index : ", playerIndex, " with Past Bet of ", thisGameActions['BetHistory'][thisGameActions['Street']][playerIndex])
-            print("Current maxBet: ", maxBet, " by Player at Index: ", startPosition, " in Game? ", self.PlayersList[playerIndex].isInGame())
+            print("\nCurrent street " , thisGameActions['Street'], " on Player at Index : ", playerIndex, " with Past Bet of ", thisGameActions['BetHistory'][thisGameActions['Street']][playerIndex],  file=file)
+            print("Current maxBet: ", maxBet, " by Player at Index: ", startPosition, " in Game? ", self.PlayersList[playerIndex].isInGame(),  file=file)
             
-            if ((min(thisGameActions['BetHistory'][thisGameActions['Street']]) == maxBet) and (playerIndex == startPosition)):
-                #END Condition
-                #TODO: Need check if the game is ended due to all Folded
+            
+            pastBet = thisGameActions['BetHistory'][thisGameActions['Street']][playerIndex]
+            
+            
+            if ((np.nanmin(thisGameActions['BetHistory'][thisGameActions['Street']]) == maxBet) and (playerIndex == startPosition) and ((not math.isnan(pastBet)) and pastBet == maxBet) ):
+                #END Condition:
+                #All Bets from All Players are either nan (not playing) or ,at least, same as maxBet --- TRUE if all checks, all called, FALSE if no action yet (the first time playerIndex == startPosition) or not all Called or Checked
+                #AND
+                #Current Iteration is back to startPosition (UTG for River, SB for other Streets, or the Player with initial maxBet)
+                #AND
+                #Current Iteration(Player) has not null past bet in current street (action() has been called) and pastBet == maxBet  --- a sanity check, False if BetHistory, maxBet, bet are out of sync
+                print("*******",  file=file)
+                print("Current Street ", thisGameActions['Street'] , " Ends",  file=file)
+                print("Current Pot: " , thisGameActions['Pot'],  file=file)
+                print("*******",  file=file)
                 
                 if thisGameActions['Street'] == 'River':
                     isGameEnded = True
@@ -231,44 +244,49 @@ class table():
                 break
             
             ### Checks
-            print("Current Pot: " , thisGameActions['Pot'])
             #print(self.PlayersList[playerIndex].isActive())
             #print(self.PlayersList[playerIndex].isInGame())
             #print(math.isnan(thisGameActions['BetHistory'][thisGameActions['Street']][playerIndex]))
             
-            if((self.PlayersList[playerIndex].isActive()) and (self.PlayersList[playerIndex].isInGame()) and ((thisGameActions['BetHistory'][thisGameActions['Street']][playerIndex] < maxBet) or (math.isnan(thisGameActions['BetHistory'][thisGameActions['Street']][playerIndex])))):
-                pass
-            else:
-                break
-            ### Checks
             
-            pastBet = thisGameActions['BetHistory'][thisGameActions['Street']][playerIndex]
-            if ((self.PlayersList[playerIndex].isActive()) and (self.PlayersList[playerIndex].isInGame()) and ((pastBet < maxBet) or (math.isnan(pastBet)))):
+            
+            if ((self.PlayersList[playerIndex].isActive()) and (self.PlayersList[playerIndex].isInGame()) ):
                 
-                print("Call for action on Player at Index: ", playerIndex)
+                print("Call for action on Player at Index: ", playerIndex,  file=file)
                 
                 action, bet = self.PlayersList[playerIndex].action(np.where(math.isnan(pastBet), maxBet, maxBet - pastBet), thisGameActions)
-                maxBet = max(maxBet, bet) #update maxBet
+                maxBet = np.nanmax([maxBet, bet]) #update maxBet
                 
-                print("Player at Index's Action: ", action, " with bet: ", bet)
+                print("Player at Index's Action: ", action, " with bet: ", bet,  file=file)
                 
+                #Check if Action Valid
+                if self._actionValidation(thisGameActions, action, bet, playerIndex, file) == False:
+                    print("Player at ", playerIndex, " returned an invalid action, FORCE to FOLD",  file=file)
+                    self.PlayersList[playerIndex].endGame(0)
+                    action = 'Forced FOLD'
+                    
                 #record actions,BetHistory,Pot
                 thisGameActions['BetHistory'][thisGameActions['Street']][playerIndex] = np.where(math.isnan(pastBet), 0, pastBet) + bet
                 thisGameActions['Actions'][thisGameActions['Street']].append((self.PlayersList[playerIndex].name,(action, bet)))
                 thisGameActions['Pot'] = thisGameActions['Pot'] + bet
                 self.pot = self.pot + bet
                 
+
+                    
                 #update startPosition if there is a Raise or ALL IN
-                if ((action.upper() == 'RAISE') or (action.upper() == 'ALL IN')):
+                if ((action.upper() == 'RAISE') or (action.upper() == 'BET') or (action.upper() == 'ALL IN')):
                     startPosition = playerIndex
                     
                 #if Folded, turn isInGame to False, should have been handled by PlayerClass
                 elif action.upper() == 'FOLD':
                     self.PlayersList[playerIndex].endGame(0)
-                
                 else:
-                    #Call, do nothing
+                    #Call or Check, do nothing to the startPosition
                     pass
+            else:
+                print("current player out of game, Skip current player",  file=file)
+            
+
                     
             #update playerIndex
             playerIndex = (playerIndex + 1)%len(self.PlayersList)
@@ -277,14 +295,43 @@ class table():
         return isGameEnded
         
     
-    @staticmethod
-    def actionValidation(thisGameActions, currentAction):
-        #check if the returned action is valid
-        pass
     
-    @staticmethod
-    def playerValidation(player):
-        #get player's nChip to make sure it's calculated correctly
+    def _actionValidation(self, thisGameActions, currentAction, currentBet, playerIndex, file):
+        #check if the returned action is valid
+        currentStreet = thisGameActions['Street']
+        if np.isnan(currentBet):
+            print("INVALID NaN Bet",  file=file)
+            return False
+        elif currentAction.upper() == 'FOLD':
+            return not self.PlayersList[playerIndex].isInGame()  #True if the inGame flag is False
+        elif currentAction.upper() == 'CALL':
+            maxBet = np.where(np.isnan(np.nanmax(thisGameActions['BetHistory'][currentStreet])), 0, np.nanmax(thisGameActions['BetHistory'][currentStreet]))
+            allBet = np.where(np.isnan(currentBet), 0, currentBet) + np.where(np.isnan(thisGameActions['BetHistory'][currentStreet][playerIndex]), 0, thisGameActions['BetHistory'][currentStreet][playerIndex])
+            return allBet == maxBet #True if all past bet in this street match to maxBet
+        elif currentAction.upper() == 'CHECK':
+            maxBet = np.where(np.isnan(np.nanmax(thisGameActions['BetHistory'][currentStreet])), 0, np.nanmax(thisGameActions['BetHistory'][currentStreet]))
+            allBet = np.where(np.isnan(currentBet), 0, currentBet) + np.where(np.isnan(thisGameActions['BetHistory'][currentStreet][playerIndex]), 0, thisGameActions['BetHistory'][currentStreet][playerIndex])
+            return ((allBet == maxBet)&(np.where(np.isnan(currentBet), 0, currentBet) == 0)) #True if all past bet in this street match to maxBet AND current Bet is 0
+        elif currentAction.upper() == 'ALL IN':
+            maxBet = np.where(np.isnan(np.nanmax(thisGameActions['BetHistory'][currentStreet])), 0, np.nanmax(thisGameActions['BetHistory'][currentStreet]))
+            allBet = np.where(np.isnan(currentBet), 0, currentBet) + np.where(np.isnan(thisGameActions['BetHistory'][currentStreet][playerIndex]), 0, thisGameActions['BetHistory'][currentStreet][playerIndex])
+            if allBet < maxBet:
+                return self.PlayersList[playerIndex].nChip == 0 #True if player bet with all remaining chips
+            else:
+                return True #Else True
+        elif ((currentAction.upper() == 'BET') or (currentAction.upper() == 'RAISE')):
+            maxBet = np.where(np.isnan(np.nanmax(thisGameActions['BetHistory'][currentStreet])), 0, np.nanmax(thisGameActions['BetHistory'][currentStreet]))
+            allBet = np.where(np.isnan(currentBet), 0, currentBet) + np.where(np.isnan(thisGameActions['BetHistory'][currentStreet][playerIndex]), 0, thisGameActions['BetHistory'][currentStreet][playerIndex])
+            return allBet > maxBet       
+        else:
+            print("INVALID ACTION CATEGORY",  file=file)
+            return False
+    
+    def _gameValidation(self, thisGameActions):
+        """
+        Check if Total Chips are not changing
+        Check if Players' nChip is correct after the game
+        """
         pass
     
     
@@ -320,7 +367,7 @@ class table():
         #prepare pickle file to store game history
         filename = 'history_' + datetime.today().strftime('%Y_%m_%d_%H_%M_%S') + '.pickle'
         outfile = open('./GameHistory/' + filename, 'wb')
-        
+        file=open('.\log.txt', 'w')
         #create a deck for following game
         theDeck = Deck(1)        
  
@@ -336,7 +383,7 @@ class table():
                     
                 print('*******Save Game History******')
                 outfile.close()
-                
+                file.close()
                 return 0
         
             #prepare a new game :
@@ -382,7 +429,8 @@ class table():
                     'Winners' : []
                     }
             
-            print("Game ", " ", GAME_ID)
+            print(" ",  file=file)
+            print("Game ", " ", GAME_ID,  file=file)
             
             #print(thisGameActions)
 
@@ -411,7 +459,7 @@ class table():
                 #update street to thisGameActions
                 thisGameActions['Street'] = street
                 #run currentStreet and return True if game ended
-                gameEnd = self._runCurrentStreet(thisGameActions,theDeck, currentSB)
+                gameEnd = self._runCurrentStreet(thisGameActions,theDeck, currentSB,file)
                 
                 if gameEnd:
                     #Determin Winner
@@ -421,7 +469,7 @@ class table():
                         for i, plyr in enumerate(self.PlayersList):
                             if plyr.isInGame() == True:
                                 index = i
-                        print("All other players folded, Winner is " + self.PlayersList[index].name() + ' at position ' + index)
+                        print("All other players folded, Winner is " + self.PlayersList[index].name + ' at position ' + str(index),  file=file)
                         self.PlayersList[index].endGame(self.pot) #pay the player
                         self.pot = 0
                         thisGameActions['Winners'].append((index, []))
@@ -439,19 +487,22 @@ class table():
                         
                         winners_list = calc.find_winner(community_card, players_hand)
                         
-                        print("Winner(s) is(are) " , winners_list)
-                        print("Community Cards: ")
+                        print("Winner(s) is(are) " , winners_list,  file=file)
+                        print("Community Cards: ",  file=file)
                         for i in community_card:
-                            print(i.prettyCard())
+                            #print(i.prettyCard())
+                            print(i,  file=file)
                         
-                        print("----------------------")
-                        print("winner hands: ")
+                        print("----------------------",  file=file)
+                        print("winner hands: ",  file=file)
                         for winner_index in winners_list:
                             
-                            print("winner " + str(winner_index))
-                            print(self.PlayersList[winner_index].hand[0].prettyCard())
-                            print(self.PlayersList[winner_index].hand[1].prettyCard())
-                            print("----------------------")
+                            print("winner " + str(winner_index),  file=file)
+                            #print(self.PlayersList[winner_index].hand[0].prettyCard())
+                            #print(self.PlayersList[winner_index].hand[1].prettyCard())
+                            print(str(self.PlayersList[winner_index].hand[0]), file=file)
+                            print(str(self.PlayersList[winner_index].hand[1]), file=file)
+                            print("----------------------",  file=file)
                             
                             thisGameActions['Winners'].append((winner_index, self.PlayersList[winner_index].hand))
                             
@@ -469,7 +520,9 @@ class table():
             
 
             # Current Game ends
-            
+            print("game summary: ", file = file)
+            for plyr in self.PlayersList:
+                print(plyr.name, ' has remaining stack of ', str(plyr.nChip), file = file)
             #save history
             pickle.dump(thisGameActions, outfile)
             
