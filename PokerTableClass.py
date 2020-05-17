@@ -141,9 +141,9 @@ class table():
         
         #store initial bet
         thisGameActions['BetHistory']['PreFlop'] = tempBetHistory
-        thisGameActions['BetHistory']['Flop'] = tempBetHistory_other_street
-        thisGameActions['BetHistory']['Turn'] = tempBetHistory_other_street
-        thisGameActions['BetHistory']['River'] = tempBetHistory_other_street
+        thisGameActions['BetHistory']['Flop'] = tempBetHistory_other_street.copy()
+        thisGameActions['BetHistory']['Turn'] = tempBetHistory_other_street.copy()
+        thisGameActions['BetHistory']['River'] = tempBetHistory_other_street.copy()
         return currentSB
                 
 
@@ -319,7 +319,7 @@ class table():
         
         #prepare pickle file to store game history
         filename = 'history_' + datetime.today().strftime('%Y_%m_%d_%H_%M_%S') + '.pickle'
-        outfile = open('./' + filename, 'wb')
+        outfile = open('./GameHistory/' + filename, 'wb')
         
         #create a deck for following game
         theDeck = Deck(1)        
@@ -344,8 +344,20 @@ class table():
             self.pot = 0
             
             # Shuffle the deck
-            seed = int(datetime.today().strftime('%Y-%m-%d-%H:%M:%S')[15]) * int(datetime.today().strftime('%Y-%m-%d-%H:%M:%S')[18])
+            seed = datetime.now().microsecond
             theDeck.shuffle(seed)
+            if datetime.now().microsecond%3 == 0:
+                seed = datetime.now().microsecond
+                theDeck.shuffle(seed)
+            if datetime.now().microsecond%7 == 0:
+                seed = datetime.now().microsecond
+                theDeck.shuffle(seed)
+            if datetime.now().microsecond%5 == 0:
+                theDeck = Deck(1) 
+                seed = datetime.now().microsecond%3
+                theDeck.shuffle(seed)
+                
+            
             #prepare an empty ActionHistory
             thisGameActions = {  'Street' : 'PreFlop',
                     'Actions' : {
@@ -412,6 +424,7 @@ class table():
                         print("All other players folded, Winner is " + self.PlayersList[index].name() + ' at position ' + index)
                         self.PlayersList[index].endGame(self.pot) #pay the player
                         self.pot = 0
+                        thisGameActions['Winners'].append((index, []))
                     elif len(thisGameActions['CommunityCards']['River']) == 0:
                         print("Error no enough community cards to find winner")
                     elif self.getNPlayer_inGame() < 2:
@@ -440,7 +453,7 @@ class table():
                             print(self.PlayersList[winner_index].hand[1].prettyCard())
                             print("----------------------")
                             
-                            thisGameActions['Winners'].append((winner_index, self.PlayersList[winner_index]))
+                            thisGameActions['Winners'].append((winner_index, self.PlayersList[winner_index].hand))
                             
                         #chop:
                         profits = self.pot/len(winners_list)

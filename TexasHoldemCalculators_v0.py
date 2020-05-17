@@ -420,11 +420,12 @@ def find_winner(community_cards , player_hands):
         for result in results[1:]:
             
             if bestResult[1] != result[1]:
-                return _prepare_winner_index_list(all_winners)
+                #return _prepare_winner_index_list(all_winners)#TODO here???
+                pass
             else:
                 all_winners.append(result)
                 
-            bestResult = result
+            #bestResult = result
                 
     if len(all_winners) == 1:
         return _prepare_winner_index_list(all_winners) #one winner
