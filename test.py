@@ -22,6 +22,7 @@ if __name__ == "__main__":
     p6 = Player(100, "p6")
     
     aTable = table()
+    aTable.setMaxGames(1000)
     
     aTable.addPlayer(p1)
     aTable.addPlayer(p2)
