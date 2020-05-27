@@ -16,7 +16,7 @@ Child classes will implement different action()
 Child classes will with option to rebuy() and change active to True before return FOLD
 
 """
-import TexasHoldemCalculators_v0 as calc 
+import TexasHoldemCalculators as calc 
 from cardClass import Card, PokerCard
 
 class Player():

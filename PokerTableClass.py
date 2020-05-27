@@ -23,7 +23,7 @@ while not end:
 """
 from playerClass import Player
 from deckClass import Deck
-import TexasHoldemCalculators_v0 as calc
+import TexasHoldemCalculators as calc
 import numpy as np
 import math
 from datetime import datetime
@@ -34,13 +34,15 @@ class table():
     def __init__(self):
         self.buttomPosition = 0
         self.PlayersList = [] 
+        self.PlayerStack = []
         self.pot = 0
         self.bb = 2
         self.sb = 1
         self.MAX_ITERATION = 50
 
-    def addPlayer(self, newPlayer : Player):
+    def addPlayer(self, newPlayer : Player, newPlayerStack : int):
         self.PlayersList.append(newPlayer)
+        self.PlayerStack.append(newPlayerStack)
         
     def getPot(self):
         return self.pot
@@ -50,8 +52,8 @@ class table():
     
     def getNPlayer_active(self):
         n = 0
-        for plyr in self.PlayersList:
-            if plyr.isActive():
+        for i, plyr in enumerate(self.PlayersList):
+            if (plyr.isActive() & (self.PlayerStack[i] > 0)):
                 n = n + 1
         
         return n
@@ -102,18 +104,44 @@ class table():
         
         while(positionCode < (nActivePlayers )): #while minused 1 before??
 
-            if self.PlayersList[PlayersIndex].isActive():
-                #it's still active
+            if ((self.PlayersList[PlayersIndex].isActive())&(self.PlayerStack[PlayersIndex] > 0)):
+                #it's still active AND have positive stack
                 
                 #this player is active, prepare required blinds, store currentSB if it's SB
                 if positionCode == 0:
                 #if we just assing SB player, update new currentSB for return
                     currentSB = PlayersIndex
-                    tempBetHistory[PlayersIndex] = self.sb
-                    price2play = self.sb
+                    tempBetHistory[PlayersIndex] = self.sb#to be removed
+                    price2play = self.sb#to be removed
+                    
+                    if self.PlayerStack[PlayersIndex] >= self.sb:
+                        self.PlayerStack[PlayersIndex] = self.PlayerStack[PlayersIndex] - self.sb
+                        tempBetHistory[PlayersIndex] = self.sb
+                        thisGameActions['Pot'] = self.pot + self.sb
+                        self.pot = self.pot + self.sb
+                    else:
+                        price2play = self.PlayerStack[PlayersIndex]
+                        tempBetHistory[PlayersIndex] = price2play
+                        self.PlayerStack[PlayersIndex] = 0
+                        thisGameActions['Pot'] = self.pot + price2play
+                        self.pot = self.pot + price2play
+                
                 elif positionCode == 1:
                     tempBetHistory[PlayersIndex] = self.bb
                     price2play = self.bb
+                    
+                    if self.PlayerStack[PlayersIndex] >= self.bb:
+                        self.PlayerStack[PlayersIndex] = self.PlayerStack[PlayersIndex] - self.bb
+                        tempBetHistory[PlayersIndex] = self.bb
+                        thisGameActions['Pot'] = self.pot + self.bb
+                        self.pot = self.pot + self.bb
+                    else:
+                        price2play = self.PlayerStack[PlayersIndex]
+                        tempBetHistory[PlayersIndex] = price2play
+                        self.PlayerStack[PlayersIndex] = 0
+                        thisGameActions['Pot'] = self.pot + price2play
+                        self.pot = self.pot + price2play
+                    
                 else:
                     price2play = 0
                 
@@ -123,10 +151,9 @@ class table():
                 hand.append(theDeck.dealt())        
                 
                 #ACTIVATE the Player
-                initBet = self.PlayersList[PlayersIndex].startGame(hand, positionCode, price2play)
+                initBet = self.PlayersList[PlayersIndex].startGame(hand, positionCode, price2play) #TODO
                 #Add bet to Pot (sb, bb, sttradle)
-                thisGameActions['Pot'] = self.pot + initBet
-                self.pot = self.pot + initBet
+
                 
                 # Move to next position, and the next player
                 positionCode = positionCode + 1
@@ -256,7 +283,7 @@ class table():
                 print("Call for action on Player at Index: ", playerIndex,  file=file)
                 
                 action, bet = self.PlayersList[playerIndex].action(np.where(math.isnan(pastBet), maxBet, maxBet - pastBet), thisGameActions)
-                maxBet = np.nanmax([maxBet, bet]) #update maxBet
+                maxBet = np.nanmax([maxBet, np.where(math.isnan(pastBet), 0, pastBet) + bet ]) #update maxBet
                 
                 print("Player at Index's Action: ", action, " with bet: ", bet,  file=file)
                 
@@ -265,14 +292,14 @@ class table():
                     print("Player at ", playerIndex, " returned an invalid action, FORCE to FOLD",  file=file)
                     self.PlayersList[playerIndex].endGame(0)
                     action = 'Forced FOLD'
-                    
+                
                 #record actions,BetHistory,Pot
                 thisGameActions['BetHistory'][thisGameActions['Street']][playerIndex] = np.where(math.isnan(pastBet), 0, pastBet) + bet
                 thisGameActions['Actions'][thisGameActions['Street']].append((self.PlayersList[playerIndex].name,(action, bet)))
-                thisGameActions['Pot'] = thisGameActions['Pot'] + bet
-                self.pot = self.pot + bet
+                thisGameActions['Pot'] = thisGameActions['Pot'] + min(bet, self.PlayerStack[playerIndex] )
+                self.pot = self.pot + min(bet, self.PlayerStack[playerIndex] )
+                self.PlayerStack[playerIndex] = max(self.PlayerStack[playerIndex] - bet, 0)
                 
-
                     
                 #update startPosition if there is a Raise or ALL IN
                 if ((action.upper() == 'RAISE') or (action.upper() == 'BET') or (action.upper() == 'ALL IN')):
@@ -379,8 +406,8 @@ class table():
         
         #prepare pickle file to store game history
         filename = 'history_' + datetime.today().strftime('%Y_%m_%d_%H_%M_%S') + '.pickle'
-        outfile = open('./GameHistory/' + filename, 'wb')
-        file=open('.\log.txt', 'w')
+        outfile = open('../GameHistory/' + filename, 'wb')
+        file=open('..\GameHistory\log.txt', 'w')
         #create a deck for following game
         theDeck = Deck(1)        
  
@@ -439,7 +466,8 @@ class table():
                         },
                     'Pot' : 0,
                     'NPlayers' : len(self.PlayersList),
-                    'Winners' : []
+                    'Winners' : [],
+                    'PlayerStack' : self.PlayerStack
                     }
             
             print(" ",  file=file)
@@ -485,6 +513,7 @@ class table():
                                 index = i
                         print("All other players folded, Winner is " + self.PlayersList[index].name + ' at position ' + str(index),  file=file)
                         self.PlayersList[index].endGame(self.pot) #pay the player
+                        self.PlayerStack[index] = self.PlayerStack[index] + self.pot
                         self.pot = 0
                         thisGameActions['Winners'].append((index, []))
                     elif len(thisGameActions['CommunityCards']['River']) == 0:
@@ -527,7 +556,8 @@ class table():
                         
                         for player_index in winners_list:
                             self.PlayersList[player_index].endGame(profits)
-                            
+                            self.PlayerStack[player_index] = self.PlayerStack[player_index] + profits
+                        
                         self.pot = 0
                         
                     
@@ -537,8 +567,8 @@ class table():
 
             # Current Game ends
             print("game summary: ", file = file)
-            for plyr in self.PlayersList:
-                print(plyr.name, ' has remaining stack of ', str(plyr.nChip), file = file)
+            for i, plyr in enumerate(self.PlayersList):
+                print(plyr.name, ' has remaining stack of ', str(plyr.nChip), ' has remaining stack ON TABLE ', str(self.PlayerStack[i]), file = file)
                 plyr.endGame(0) #just to make sure
             #save history
             pickle.dump(thisGameActions, outfile)

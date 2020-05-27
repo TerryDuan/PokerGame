@@ -44,9 +44,9 @@ Parameters | Description
 chipsToCall | number of chips the player need to return to keep playing (e.g. 2 to call previous bet)
 thisGameActions | a dictionary with all the past actions/bets/decisions for current game
 
-Returns | Description
-------- | -----------
-action | a string for the type of actions (valid actions: ALL IN, BET， RAISE, CALL, CHECK, FOLD)
+Returns    | Description
+---------- | -----------
+action | a string for the type of actions (valid actions: ALL IN, BET，RAISE, CALL, CHECK, FOLD)
 chipsToCall | number of chips pay to the table/pot
 
 ### Create an interactive Player agent
