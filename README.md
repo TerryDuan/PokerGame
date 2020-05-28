@@ -13,27 +13,32 @@ Under current version,  the Game is simplified as No Straddle No Re-entry Game.
 from playerClass import Player
 from PokerTableClass import table
 
-#create dummy player
-p1 = Player(100, "p1")
-p2 = Player(100, "p2")
-p3 = Player(100, "p3")
-p4 = Player(100, "p4")
-p5 = Player(100, "p5")
-p6 = Player(100, "p6")
+#create 5 dummy player, 1 smarterPlayer
+p1 = Player("p1")
+p2 = Player("p2")
+p3 = Player("p3")
+p4 = Player("p4")
+p5 = Player("p5")
+p6 = smarterPlayer("sp6")
 
-#create a table, and set max number of games
+#create table
 aTable = table()
 aTable.setMaxGames(1000)
 
-#add players to table
-aTable.addPlayer(p1)
-aTable.addPlayer(p2)
-aTable.addPlayer(p3)
-aTable.addPlayer(p4)
-aTable.addPlayer(p5)
-aTable.addPlayer(p6)
+#adding players
+aTable.addPlayer(p1,100)
+aTable.addPlayer(p2,100)
+aTable.addPlayer(p3,100)
+aTable.addPlayer(p4,100)
+aTable.addPlayer(p5,100)
+aTable.addPlayer(p6,100)
 
-#start the game
+print("Table Setted up with Six dummy player")
+print("Number of Players " + str(aTable.getNPlayer()))
+print("Number of Active Players " + str(aTable.getNPlayer_active()))
+print("Number of inGame Players " + str(aTable.getNPlayer_inGame()))
+
+#run the game
 aTable.runGame()
 ```
 
@@ -49,9 +54,34 @@ Returns    | Description
 action | a string for the type of actions (valid actions: ALL IN, BET，RAISE, CALL, CHECK, FOLD)
 chipsToCall | number of chips pay to the table/pot
 
+
 ### Create an interactive Player agent
 
-TODO
+User can play with the bots through the interactive Player agent.
+User need to Type in Action and Bet Size
+
+#### Example:
+
+```python
+p5 = interactivePlayer("ip5")
+```
+
+```python
+***************************
+current street  PreFlop  your position  4
+your hand  h9 s9
+your stack  100
+bet to call  2.0
+community cards 
+current Street Bet History
+{'PreFlop': [1, 2, 2.0, 2.0, nan, nan], 'Flop': [nan, nan, nan, nan, nan, nan], 'Turn': [nan, nan, nan, nan, nan, nan], 'River': [nan, nan, nan, nan, nan, nan]}
+
+type in your action: BET
+
+type in your bet (int): 100
+
+***************************
+```
 
 ### Simulation History
 

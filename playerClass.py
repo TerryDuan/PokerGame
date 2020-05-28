@@ -21,10 +21,9 @@ from cardClass import Card, PokerCard
 
 class Player():
     
-    def __init__(self, nChip : int, name : str):
+    def __init__(self, name : str):
         
         self.name = name
-        self.nChip = nChip
         
         self.hand = [] # do we need make a copy of cards from desk class
         self.position = None
@@ -34,18 +33,16 @@ class Player():
     def name(self):
         return self.name
     
-    def nChip(self):
-        return self.nChip
 
     def isActive(self):
 
-        return ((self.active) and (self.nChip >= 1))   
+        return ((self.active))   
 
     def isInGame(self):
         
         return self.inGame         
         
-    def startGame(self, yourHand : list, yourPosition : int, cost2Start = 0):
+    def startGame(self, yourHand : list, yourPosition : int):
         """
         Called once every game, by Table
         If Straddle is allowed, need to override this method
@@ -55,19 +52,9 @@ class Player():
         self.hand = yourHand
         self.position = yourPosition
         
-        if yourPosition <= 1:
-            if self.nChip < cost2Start:
-                chip = self.nChip
-                self.nChip = 0
-                return chip
-            else:
-                self.nChip = self.nChip - cost2Start
-                return cost2Start
-        else:
-            return 0
             
         
-    def endGame(self, payoff : int):
+    def endGame(self):
         """
         Called once every game, by Table, After 'FOLD' action or After River
         """
@@ -75,11 +62,18 @@ class Player():
         self.inGame = False
         self.hand = []
         self.position = None
-        self.nChip = self.nChip + payoff
         
-        #check if the player has enough chip for next game
-        if self.nChip < 1:
-            self.active = False
+    def _getCurrentStack(self, thisGameActions : dict):
+        """
+        Based on thisGameActions, get current stacks
+        return number of Chips
+        """
+        try:
+            result = thisGameActions['PlayerStack'][thisGameActions['PublicPlayersList'].index(self.name)]
+            return result
+        except:
+            return -1
+        
      
     def action(self, chipsToCall : int, thisGameActions : dict):
         """
@@ -103,15 +97,16 @@ class Player():
                             }
         """
         
+        nChip = self._getCurrentStack(thisGameActions)
         
         if self.position < 2:
-            self.nChip = self.nChip - chipsToCall
+            
             return 'CALL' , chipsToCall
-        elif chipsToCall < self.nChip:
-            self.nChip = self.nChip - chipsToCall
+        elif chipsToCall < nChip:
+            
             return 'CALL', chipsToCall
         else:
-            self.endGame(0)
+            self.endGame()
             return 'FOLD' , 0
         
         

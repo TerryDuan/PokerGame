@@ -11,17 +11,19 @@ import sys
 sys.path.append("..")
 from deckClass import Deck
 from playerClass import Player
+from smarterPlayer import smarterPlayer
+from interactivePlayer import interactivePlayer
 from PokerTableClass import table
 
 if __name__ == "__main__":
     print("TEST TEST TEST")
     
-    p1 = Player(100, "p1")
-    p2 = Player(100, "p2")
-    p3 = Player(100, "p3")
-    p4 = Player(100, "p4")
-    p5 = Player(100, "p5")
-    p6 = Player(100, "p6")
+    p1 = Player("p1")
+    p2 = Player("p2")
+    p3 = Player("p3")
+    p4 = Player("p4")
+    p5 = interactivePlayer("ip5")
+    p6 = smarterPlayer("sp6")
     
     aTable = table()
     aTable.setMaxGames(1000)
