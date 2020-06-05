@@ -22,7 +22,7 @@ if __name__ == "__main__":
     p2 = Player("p2")
     p3 = Player("p3")
     p4 = Player("p4")
-    p5 = interactivePlayer("ip5")
+    p5 = Player("ip5")
     p6 = smarterPlayer("sp6")
     
     aTable = table()

@@ -11,6 +11,8 @@ Under current version,  the Game is simplified as No Straddle No Re-entry Game.
 
 ```python
 from playerClass import Player
+from smarterPlayer import smarterPlayer
+from interactivePlayer import interactivePlayer
 from PokerTableClass import table
 
 #create 5 dummy player, 1 smarterPlayer
@@ -82,6 +84,9 @@ type in your bet (int): 100
 
 ***************************
 ```
+### GUI
+
+Under Development :)
 
 ### Simulation History
 
